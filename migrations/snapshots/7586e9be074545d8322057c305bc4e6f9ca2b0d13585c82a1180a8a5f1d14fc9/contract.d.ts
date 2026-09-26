@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'231d78b2ecf5aafb0d67ea639fb0edcb335451d2e663606afec2be1d01201c33'>;
+  StorageHashBase<'7586e9be074545d8322057c305bc4e6f9ca2b0d13585c82a1180a8a5f1d14fc9'>;
 export type ExecutionHash =
   ExecutionHashBase<'fd0fcda4107681d76ac83bd31e0351af8a7736c4f856f0222bef69d9fdf9d976'>;
 export type ProfileHash =
@@ -252,7 +252,6 @@ export type FieldOutputTypes = {
     readonly Role: {
       readonly id: CodecTypes['pg/int8@1']['output'];
       readonly name: Varchar<120>;
-      readonly systemKey: Varchar<80> | null;
       readonly scopeType: 'global' | 'location';
       readonly isProtected: CodecTypes['pg/bool@1']['output'];
       readonly description: Varchar<500> | null;
@@ -278,7 +277,6 @@ export type FieldInputTypes = {
     readonly Role: {
       readonly id: CodecTypes['pg/int8@1']['input'];
       readonly name: CodecTypes['sql/varchar@1']['input'];
-      readonly systemKey: CodecTypes['sql/varchar@1']['input'] | null;
       readonly scopeType: 'global' | 'location';
       readonly isProtected: CodecTypes['pg/bool@1']['input'];
       readonly description: CodecTypes['sql/varchar@1']['input'] | null;
@@ -313,7 +311,6 @@ export type StorageColumnTypes = {
       readonly is_protected: CodecTypes['pg/bool@1']['output'];
       readonly name: Varchar<120>;
       readonly scope_type: 'global' | 'location';
-      readonly system_key: Varchar<80> | null;
       readonly updated_at: CodecTypes['pg/timestamptz-string@1']['output'];
     };
   };
@@ -339,7 +336,6 @@ export type StorageColumnInputTypes = {
       readonly is_protected: CodecTypes['pg/bool@1']['input'];
       readonly name: CodecTypes['sql/varchar@1']['input'];
       readonly scope_type: 'global' | 'location';
-      readonly system_key: CodecTypes['sql/varchar@1']['input'] | null;
       readonly updated_at: CodecTypes['pg/timestamptz-string@1']['input'];
     };
   };
@@ -349,7 +345,6 @@ export namespace Models {
   export type public_Role = {
     id: CodecTypes['pg/int8@1']['output'];
     name: Varchar<120>;
-    systemKey: Varchar<80> | null;
     scopeType: 'global' | 'location';
     isProtected: CodecTypes['pg/bool@1']['output'];
     description: Varchar<500> | null;
@@ -522,12 +517,6 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly typeParams: { readonly length: 120 };
                 };
-                readonly system_key: {
-                  readonly nativeType: 'character varying';
-                  readonly codecId: 'sql/varchar@1';
-                  readonly nullable: true;
-                  readonly typeParams: { readonly length: 80 };
-                };
                 readonly scope_type: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
@@ -562,7 +551,6 @@ type ContractBase = Omit<
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [
-                { readonly columns: readonly ['system_key'] },
                 { readonly columns: readonly ['name', 'scope_type'] },
                 { readonly columns: readonly ['id', 'scope_type'] },
               ];
@@ -677,14 +665,6 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly length: 120 };
                 };
               };
-              readonly systemKey: {
-                readonly nullable: true;
-                readonly type: {
-                  readonly kind: 'scalar';
-                  readonly codecId: 'sql/varchar@1';
-                  readonly typeParams: { readonly length: 80 };
-                };
-              };
               readonly scopeType: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -735,7 +715,6 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly id: { readonly column: 'id' };
                 readonly name: { readonly column: 'name' };
-                readonly systemKey: { readonly column: 'system_key' };
                 readonly scopeType: { readonly column: 'scope_type' };
                 readonly isProtected: { readonly column: 'is_protected' };
                 readonly description: { readonly column: 'description' };

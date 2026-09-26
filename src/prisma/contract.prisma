@@ -17,11 +17,14 @@ enum PermissionScopePolicy {
 model Role {
   id          BigInt        @id @default(autoincrement())
   name        VarChar(120)
+  systemKey VarChar(80)? @unique @map("system_key")
   scopeType   RoleScopeType @map("scope_type")
   isProtected Boolean       @default(false) @map("is_protected")
   description VarChar(500)?
   createdAt   TimestamptzString @default(now()) @map("created_at")
   updatedAt   temporal.updatedAtString() @map("updated_at")
+
+  rolePermissions RolePermission[]
 
   @@unique([name, scopeType])
   @@unique([id, scopeType])
@@ -35,5 +38,20 @@ model Permission {
   description VarChar(500)?
   createdAt   TimestamptzString     @default(now()) @map("created_at")
 
+  rolePermissions RolePermission[]
+
   @@map("permissions")
+}
+
+model RolePermission {
+  roleId       BigInt @map("role_id")
+  permissionId BigInt @map("permission_id")
+  createdAt   TimestamptzString @default(now()) @map("created_at")
+
+  role        Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission  Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
 }

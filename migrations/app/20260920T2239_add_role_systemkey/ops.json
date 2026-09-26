@@ -1,0 +1,86 @@
+[
+  {
+    "id": "column.public.roles.system_key",
+    "label": "Add column \"system_key\" to \"roles\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "system_key",
+        "table": "roles"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"system_key\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "roles",
+          "system_key"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"system_key\"",
+        "sql": "ALTER TABLE \"public\".\"roles\" ADD COLUMN \"system_key\" character varying(80)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"system_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "roles",
+          "system_key"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.roles.roles_system_key_key",
+    "label": "Add unique constraint on \"roles\" (system_key)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "roles_system_key_key",
+        "table": "roles"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"roles_system_key_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "roles_system_key_key",
+          "public",
+          "\"public\".\"roles\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"roles_system_key_key\"",
+        "sql": "ALTER TABLE \"public\".\"roles\" ADD CONSTRAINT \"roles_system_key_key\" UNIQUE (\"system_key\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"roles_system_key_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "roles_system_key_key",
+          "public",
+          "\"public\".\"roles\""
+        ]
+      }
+    ]
+  }
+]
