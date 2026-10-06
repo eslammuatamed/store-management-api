@@ -16,7 +16,7 @@ enum PermissionScopePolicy {
 
 model Role {
   id          BigInt        @id @default(autoincrement())
-  name        VarChar(120)
+  name        VarChar(120)  @unique
   systemKey VarChar(80)? @unique @map("system_key")
   scopeType   RoleScopeType @map("scope_type")
   isProtected Boolean       @default(false) @map("is_protected")
@@ -26,7 +26,6 @@ model Role {
 
   rolePermissions RolePermission[]
 
-  @@unique([name, scopeType])
   @@unique([id, scopeType])
   @@map("roles")
 }

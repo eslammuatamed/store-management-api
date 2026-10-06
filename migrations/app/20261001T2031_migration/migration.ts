@@ -1,6 +1,6 @@
 #!/usr/bin/env -S node
-import type { Contract as End } from '../../snapshots/5d3bcf2d5b427729559c6a13e22aa0c2930051abfde7b57a1ed278c5b4af7d3f/contract';
-import endContract from '../../snapshots/5d3bcf2d5b427729559c6a13e22aa0c2930051abfde7b57a1ed278c5b4af7d3f/contract.json' with { type: 'json' };
+import type { Contract as End } from '../../snapshots/3559fa81f7e175927f379e84a9ff7cb3d8e4301edbcf9d63f34000dac5b3df3d/contract';
+import endContract from '../../snapshots/3559fa81f7e175927f379e84a9ff7cb3d8e4301edbcf9d63f34000dac5b3df3d/contract.json' with { type: 'json' };
 import {
   Migration,
   MigrationCLI,
@@ -46,6 +46,20 @@ export default class M extends Migration<never, End> {
       }),
       this.createTable({
         schema: 'public',
+        table: 'role_permissions',
+        columns: [
+          col('created_at', 'timestamptz', {
+            notNull: true,
+            default: fn('now()'),
+            codecRef: { codecId: 'pg/timestamptz-string@1' },
+          }),
+          col('permission_id', 'int8', { notNull: true, codecRef: { codecId: 'pg/int8@1' } }),
+          col('role_id', 'int8', { notNull: true, codecRef: { codecId: 'pg/int8@1' } }),
+        ],
+        constraints: [primaryKey(['role_id', 'permission_id'])],
+      }),
+      this.createTable({
+        schema: 'public',
         table: 'roles',
         columns: [
           col('created_at', 'timestamptz', {
@@ -67,6 +81,9 @@ export default class M extends Migration<never, End> {
             codecRef: { codecId: 'sql/varchar@1', typeParams: { length: 120 } },
           }),
           col('scope_type', 'text', { notNull: true, codecRef: { codecId: 'pg/text@1' } }),
+          col('system_key', 'character varying(80)', {
+            codecRef: { codecId: 'sql/varchar@1', typeParams: { length: 80 } },
+          }),
           col('updated_at', 'timestamptz', {
             notNull: true,
             codecRef: { codecId: 'pg/timestamptz-string@1' },
@@ -89,14 +106,52 @@ export default class M extends Migration<never, End> {
       this.addUnique({
         schema: 'public',
         table: 'roles',
-        constraint: 'roles_name_scope_type_key',
-        columns: ['name', 'scope_type'],
+        constraint: 'roles_name_key',
+        columns: ['name'],
+      }),
+      this.addUnique({
+        schema: 'public',
+        table: 'roles',
+        constraint: 'roles_system_key_key',
+        columns: ['system_key'],
       }),
       this.addUnique({
         schema: 'public',
         table: 'roles',
         constraint: 'roles_id_scope_type_key',
         columns: ['id', 'scope_type'],
+      }),
+      this.createIndex({
+        schema: 'public',
+        table: 'role_permissions',
+        index: 'role_permissions_permission_id_idx_909cec36',
+        columns: ['permission_id'],
+      }),
+      this.createIndex({
+        schema: 'public',
+        table: 'role_permissions',
+        index: 'role_permissions_role_id_idx_d9467c50',
+        columns: ['role_id'],
+      }),
+      this.addForeignKey({
+        schema: 'public',
+        table: 'role_permissions',
+        foreignKey: {
+          name: 'role_permissions_role_id_fkey',
+          columns: ['role_id'],
+          references: { schema: 'public', table: 'roles', columns: ['id'] },
+          onDelete: 'cascade',
+        },
+      }),
+      this.addForeignKey({
+        schema: 'public',
+        table: 'role_permissions',
+        foreignKey: {
+          name: 'role_permissions_permission_id_fkey',
+          columns: ['permission_id'],
+          references: { schema: 'public', table: 'permissions', columns: ['id'] },
+          onDelete: 'cascade',
+        },
       }),
     ];
   }

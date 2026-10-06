@@ -19,26 +19,21 @@ export class RolesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(body: CreateRoleDto) {
-    return this.prisma.orm.Role.create({
-      name: body.name,
-      description: body.description,
-      scopeType: body.scopeType,
-    });
+    const { name, description, scopeType } = body;
+    const existingRole = await this.prisma.orm.Role.where({ name }).first();
+
+    if (existingRole) throw new ConflictException('Role already exists');
+
+    return this.prisma.orm.Role.create({ name, description, scopeType });
   }
 
   async findAll(query: RoleQueryDto) {
     const apiQuery = new ApiQueryBuilder(query, roleQueryPolicy);
     let rolesQuery = this.prisma.orm.Role;
 
-    const search = apiQuery.searchPattern;
-
-    if (search) {
+    if (apiQuery.hasSearch) {
       rolesQuery = rolesQuery.where((role) =>
-        or(
-          ...roleQueryPolicy.searchable.map((field) =>
-            role[field].ilike(search),
-          ),
-        ),
+        apiQuery.buildSearchCondition(role),
       );
     }
 
@@ -46,23 +41,14 @@ export class RolesService {
       total: agg.count(),
     }));
 
-    const { field, direction } = apiQuery.sort;
+    rolesQuery = apiQuery.applySort(rolesQuery);
 
-    rolesQuery = rolesQuery.orderBy((role) => {
-      const roleField = role[field];
-
-      return direction === 'asc' ? roleField.asc() : roleField.desc();
-    });
-
-    const paginatedQuery = rolesQuery
-      .select(...apiQuery.fields)
-      .offset(apiQuery.offset)
-      .limit(apiQuery.limit);
+    rolesQuery = apiQuery.applyPagination(rolesQuery);
 
     let data;
 
     if (apiQuery.hasInclude('permissions')) {
-      const rows = await paginatedQuery
+      const rows = await rolesQuery
         .include('rolePermissions', (rolePermissions) =>
           rolePermissions.include('permission'),
         )
@@ -73,7 +59,7 @@ export class RolesService {
         permissions: rolePermissions.map(({ permission }) => permission),
       }));
     } else {
-      data = await paginatedQuery.all();
+      data = await rolesQuery.all();
     }
 
     return apiQuery.paginate(data, total);
@@ -87,6 +73,16 @@ export class RolesService {
 
   async update(id: bigint, body: UpdateRoleDto) {
     const role = await this.findOne(id);
+
+    if (body.name && body.name !== role.name) {
+      const existingRole = await this.prisma.orm.Role.where({
+        name: body.name,
+      }).first();
+
+      if (existingRole) {
+        throw new ConflictException('Role name already exists');
+      }
+    }
 
     if (body.scopeType === 'location' && role.scopeType === 'global') {
       const currentPermissions = await this.findPermissions(id);
@@ -114,22 +110,15 @@ export class RolesService {
   }
 
   async findPermissions(roleId: bigint) {
-    const role = await this.prisma.orm.Role.where({ id: roleId }).first();
-    if (!role) {
-      throw new NotFoundException('Role not found');
-    }
+    await this.findOne(roleId);
     const permissions = await this.prisma.orm.RolePermission.where({ roleId })
       .include('permission')
       .all();
-    return permissions.map((permission) => permission.permission);
+    return permissions?.map((permission) => permission.permission) || [];
   }
 
   async syncPermissions(roleId: bigint, body: SyncRolePermissionsDto) {
-    const role = await this.prisma.orm.Role.where({ id: roleId }).first();
-
-    if (!role) {
-      throw new NotFoundException('Role not found');
-    }
+    const role = await this.findOne(roleId);
 
     if (role.systemKey === 'super_admin') {
       throw new BadRequestException(
@@ -173,7 +162,7 @@ export class RolesService {
 
       const requestedIds = new Set(permissionIds);
 
-      const toAdd = permissionIds.filter((id) => !currentIds.has(id));
+      const toAdd = permissionIds?.filter((id) => !currentIds.has(id));
 
       const toRemove = currentAssignments
         .map((item) => item.permissionId)

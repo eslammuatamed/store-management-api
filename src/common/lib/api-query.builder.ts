@@ -1,3 +1,5 @@
+import { OrderByItem, WhereArg } from '@prisma/orm-postgres/relational-core';
+import { or } from '@prisma/orm-postgres/orm-client';
 import type { ApiQueryPolicy } from '../schemas/api-query.schema.js';
 
 interface ApiQueryShape {
@@ -11,6 +13,17 @@ interface ApiQueryShape {
   page: number;
   perPage: number;
 }
+
+type SortableFieldAccessor = {
+  asc: () => OrderByItem;
+  desc: () => OrderByItem;
+};
+
+type SearchExpression = Parameters<typeof or>[number];
+
+type SearchableFieldAccessor = {
+  ilike: (value: string) => SearchExpression;
+};
 
 export class ApiQueryBuilder<
   TQuery extends ApiQueryShape,
@@ -38,7 +51,12 @@ export class ApiQueryBuilder<
       return undefined;
     }
 
-    return `%${this.query.search}%`;
+    const escapedSearch = this.query.search
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_');
+
+    return `%${escapedSearch}%`;
   }
 
   get offset(): number {
@@ -47,6 +65,51 @@ export class ApiQueryBuilder<
 
   get limit(): number {
     return this.query.perPage;
+  }
+
+  get hasSearch(): boolean {
+    return Boolean(this.searchPattern);
+  }
+
+  applyPagination<TResult>(query: {
+    select: (...fields: TQuery['fields']) => {
+      offset: (offset: number) => {
+        limit: (limit: number) => TResult;
+      };
+    };
+  }): TResult {
+    return query
+      .select(...this.fields)
+      .offset(this.offset)
+      .limit(this.limit);
+  }
+
+  applySort<TModel, TResult>(query: {
+    orderBy: (callback: (model: TModel) => OrderByItem) => TResult;
+  }): TResult {
+    const { field, direction } = this.sort;
+
+    return query.orderBy((model) => {
+      const modelField = (model as Record<string, SortableFieldAccessor>)[
+        field
+      ];
+
+      return direction === 'asc' ? modelField.asc() : modelField.desc();
+    });
+  }
+
+  buildSearchCondition<TModel>(model: TModel) {
+    const search = this.searchPattern;
+
+    if (!search) {
+      throw new Error('Search term is required');
+    }
+
+    const searchableModel = model as Record<string, SearchableFieldAccessor>;
+
+    return or(
+      ...this.searchable.map((field) => searchableModel[field].ilike(search)),
+    );
   }
 
   hasInclude(include: TPolicy['includes'][number]): boolean {
