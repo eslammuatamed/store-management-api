@@ -1,13 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import type { App } from 'supertest/types.js';
+
 import { AppModule } from './../src/app.module.js';
-import { App } from 'supertest/types.js';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -24,11 +25,36 @@ describe('AppController (e2e)', () => {
       .expect('Hello World!');
   });
 
-  it('GET /api/health/live should return 200', async () => {
-    await request(app.getHttpServer()).get('/api/health/live').expect(200);
+  it('GET /api/health/live should return application health', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/health/live')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      success: true,
+      statusCode: 200,
+      message: 'Request completed successfully',
+      data: {
+        status: 'ok',
+        info: {},
+        error: {},
+        details: {},
+      },
+    });
   });
 
-  afterEach(async () => {
+  it('GET /api/health/ready should return database health', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/health/ready')
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.statusCode).toBe(200);
+    expect(response.body.data.status).toBe('ok');
+    expect(response.body.data.info.database.status).toBe('up');
+  });
+
+  afterAll(async () => {
     await app.close();
   });
 });
